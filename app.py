@@ -564,7 +564,7 @@ if generate:
         )
     with col3:
         st.download_button(
-            t["download_calendar"],
+            t["download_ics"],
             data=ics_file.read_text(encoding="utf-8"),
             file_name="weekly_alarms.ics",
             mime="text/calendar",

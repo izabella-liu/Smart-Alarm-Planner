@@ -1,3 +1,18 @@
+# 常用城市及经纬度（可自行添加更多城市）
+CITY_COORDS = {
+    "香港 Hong Kong": (22.304, 114.179),
+    "北京 Beijing": (39.904, 116.407),
+    "上海 Shanghai": (31.230, 121.474),
+    "广州 Guangzhou": (23.129, 113.264),
+    "深圳 Shenzhen": (22.543, 114.058),
+    "台北 Taipei": (25.033, 121.565),
+    "澳门 Macau": (22.199, 113.544),
+    "新加坡 Singapore": (1.352, 103.820),
+    "东京 Tokyo": (35.689, 139.692),
+    "纽约 New York": (40.713, -74.006),
+    "伦敦 London": (51.507, -0.128),
+    "悉尼 Sydney": (-33.869, 151.209),
+}
 import streamlit as st
 import pandas as pd
 from datetime import date, timedelta
@@ -87,9 +102,9 @@ TEXT = {
         "col_course": "课程",
 
         "weather_location": "🌦️ 天气位置",
-        "latitude": "纬度",
-        "longitude": "经度",
-        "weather_hint": "可以替换成你学校附近的经纬度。",
+        "weather_city": "选择你的城市",
+        "weather_city_hint": "系统会自动根据你的选择获取当地天气",
+        "weather_hint": "选择你所在的城市，系统会自动获取当地天气",
 
         "holiday_title": "🏖️ 节假日",
         "holiday_label": "输入节假日（一行一个日期）",
@@ -180,9 +195,9 @@ TEXT = {
         "col_course": "Course",
 
         "weather_location": "🌦️ Weather Location",
-        "latitude": "Latitude",
-        "longitude": "Longitude",
-        "weather_hint": "You can replace these with the latitude and longitude of your school.",
+        "weather_city": "Select your city",
+        "weather_city_hint": "The system will automatically fetch the local weather for you",
+        "weather_hint": "Select the city and the system will automatically get the local weather.",
 
         "holiday_title": "🏖️ Holidays",
         "holiday_label": "Enter holidays (one date per line)",

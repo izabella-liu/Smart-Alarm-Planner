@@ -59,7 +59,7 @@ TEXT = {
 
 1. **上传课表** — 支持 CSV 或 TXT 文件。不确定格式？点下面的「下载课表模板」按钮。
 2. **（可选）上传贪睡数据** — 记录上一周每天贪睡的次数，系统会自动帮你提前闹钟。
-3. **选择周一日期，点击生成** — 系统会计算每天的推荐起床时间，并给你三种导出格式。
+3. **选择日期、城市，点击生成** — 系统会计算每天的推荐起床时间，并给你三种导出格式。
 
 **导出格式说明：**
 - **TXT**：人类可读的详细报告
@@ -96,7 +96,9 @@ TEXT = {
         "step2_missing_col": "CSV 需要包含 snooze_count、snooze 或 贪睡次数 列。",
         "step3": "📆 3. 规划哪一周",
         "step3_date": "选择规划周的周一日期",
-        "step4": "🚀 4. 生成闹钟计划",
+        "step_weather": "🌦️ 4. 选择你的城市",
+        "step_holiday": "🏖️ 5. 节假日（可选）",
+        "step4": "🚀 6. 生成闹钟计划",
         "step4_button": "生成智能闹钟计划",
         "step4_no_schedule": "请先上传你的课表。",
 
@@ -152,7 +154,7 @@ TEXT = {
 
 1. **Upload timetable** — CSV or TXT. Not sure about the format? Click "Download Timetable Template".
 2. **(Optional) Upload snooze data** — Records how many times you snoozed last week. The system will adjust your alarms.
-3. **Pick a Monday, click Generate** — The system calculates your recommended wake-up time and gives you three export formats.
+3. **Pick a date and city, click Generate** — The system calculates your recommended wake-up time and gives you three export formats.
 
 **Export formats:**
 - **TXT**: Human-readable report
@@ -189,7 +191,9 @@ TEXT = {
         "step2_missing_col": "The CSV needs a 'snooze_count', 'snooze' or '贪睡次数' column.",
         "step3": "📆 3. Planning Week",
         "step3_date": "Select the Monday of the planning week",
-        "step4": "🚀 4. Generate Your Alarm Plan",
+        "step_weather": "🌦️ 4. Select Your City",
+        "step_holiday": "🏖️ 5. Holidays (optional)",
+        "step4": "🚀 6. Generate Your Alarm Plan",
         "step4_button": "Generate Smart Alarm Plan",
         "step4_no_schedule": "Please upload your timetable first.",
 
@@ -307,7 +311,7 @@ with st.expander(t["help_title"], expanded=False):
 
 
 # ============================================================
-# 上传课表 + 模板下载
+# 1. 上传课表 + 模板下载
 # ============================================================
 st.header(t["step1"])
 
@@ -333,7 +337,7 @@ st.download_button(
 
 
 # ============================================================
-# 上传贪睡数据 + 模板下载
+# 2. 上传贪睡数据 + 模板下载
 # ============================================================
 st.header(t["step2"])
 
@@ -379,7 +383,7 @@ else:
 
 
 # ============================================================
-# 规划日期
+# 3. 规划日期
 # ============================================================
 st.header(t["step3"])
 
@@ -396,7 +400,38 @@ week_start = st.date_input(
 
 
 # ============================================================
-# 生成按钮
+# 4. 选择城市（生成之前）
+# ============================================================
+st.header(t["step_weather"])
+
+selected_city = st.selectbox(
+    t["weather_city"],
+    list(CITY_COORDS.keys()),
+)
+latitude, longitude = CITY_COORDS[selected_city]
+st.caption(t["weather_hint"])
+
+
+# ============================================================
+# 5. 节假日（生成之前）
+# ============================================================
+st.header(t["step_holiday"])
+
+holiday_text = st.text_area(
+    t["holiday_label"],
+    placeholder=t["holiday_placeholder"],
+)
+
+holiday_dates = set()
+if holiday_text.strip():
+    for line in holiday_text.splitlines():
+        line = line.strip()
+        if line:
+            holiday_dates.add(line)
+
+
+# ============================================================
+# 6. 生成按钮
 # ============================================================
 st.header(t["step4"])
 
@@ -440,29 +475,6 @@ if generate:
         for item in schedule
     ]
     st.dataframe(pd.DataFrame(schedule_table), use_container_width=True)
-
-    # ---------- 天气位置（城市选择） ----------
-    st.subheader(t["weather_location"])
-    selected_city = st.selectbox(
-        t["weather_city"],
-        list(CITY_COORDS.keys()),
-    )
-    latitude, longitude = CITY_COORDS[selected_city]
-    st.caption(t["weather_hint"])
-
-    # ---------- 节假日 ----------
-    st.subheader(t["holiday_title"])
-    holiday_text = st.text_area(
-        t["holiday_label"],
-        placeholder=t["holiday_placeholder"],
-    )
-
-    holiday_dates = set()
-    if holiday_text.strip():
-        for line in holiday_text.splitlines():
-            line = line.strip()
-            if line:
-                holiday_dates.add(line)
 
     # ---------- 应用准备时间 ----------
     DEFAULTS["prep_minutes"] = prep_minutes

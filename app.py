@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import geonamescache
 from datetime import date, timedelta
 from pathlib import Path
 import tempfile
@@ -15,25 +16,6 @@ from smart_alarm_app import (
 
 
 # ============================================================
-# 常用城市及经纬度
-# ============================================================
-CITY_COORDS = {
-    "香港 Hong Kong": (22.304, 114.179),
-    "北京 Beijing": (39.904, 116.407),
-    "上海 Shanghai": (31.230, 121.474),
-    "广州 Guangzhou": (23.129, 113.264),
-    "深圳 Shenzhen": (22.543, 114.058),
-    "台北 Taipei": (25.033, 121.565),
-    "澳门 Macau": (22.199, 113.544),
-    "新加坡 Singapore": (1.352, 103.820),
-    "东京 Tokyo": (35.689, 139.692),
-    "纽约 New York": (40.713, -74.006),
-    "伦敦 London": (51.507, -0.128),
-    "悉尼 Sydney": (-33.869, 151.209),
-}
-
-
-# ============================================================
 # 页面设置
 # ============================================================
 st.set_page_config(
@@ -44,11 +26,47 @@ st.set_page_config(
 
 
 # ============================================================
+# 加载全球国家 / 城市数据（带缓存，只加载一次）
+# ============================================================
+@st.cache_resource
+def load_geo_data():
+    gc = geonamescache.GeonamesCache()
+    countries = gc.get_countries()
+    cities = gc.get_cities()
+
+    country_cities = {}
+    for city in cities.values():
+        code = city["countrycode"]
+        country_cities.setdefault(code, []).append({
+            "name": city["name"],
+            "lat": float(city["latitude"]),
+            "lon": float(city["longitude"]),
+            "population": city.get("population", 0),
+        })
+
+    # 每个国家内的城市按人口从多到少排序（大城市在前）
+    for code in country_cities:
+        country_cities[code].sort(key=lambda x: -x["population"])
+
+    # 国家列表：按英文名 A-Z 排序，只保留有城市数据的国家
+    country_list = [
+        {"code": code, "name": info["name"]}
+        for code, info in countries.items()
+        if code in country_cities
+    ]
+    country_list.sort(key=lambda x: x["name"])
+
+    return country_list, country_cities
+
+
+country_list, country_cities = load_geo_data()
+
+
+# ============================================================
 # 多语言文本
 # ============================================================
 TEXT = {
     "zh": {
-        "lang_label": "语言 / Language",
         "title": "⏰ 智能闹钟规划器",
         "subtitle": "面向学生的 AI 每周起床时间规划工具",
         "intro": "上传你的课表和上一周的贪睡数据，系统会自动计算每天推荐的起床时间。",
@@ -59,7 +77,7 @@ TEXT = {
 
 1. **上传课表** — 支持 CSV 或 TXT 文件。不确定格式？点下面的「下载课表模板」按钮。
 2. **（可选）上传贪睡数据** — 记录上一周每天贪睡的次数，系统会自动帮你提前闹钟。
-3. **选择日期、城市，点击生成** — 系统会计算每天的推荐起床时间，并给你三种导出格式。
+3. **选择日期、国家/城市，点击生成** — 系统会计算每天的推荐起床时间，并给你三种导出格式。
 
 **导出格式说明：**
 - **TXT**：人类可读的详细报告
@@ -96,7 +114,10 @@ TEXT = {
         "step2_missing_col": "CSV 需要包含 snooze_count、snooze 或 贪睡次数 列。",
         "step3": "📆 3. 规划哪一周",
         "step3_date": "选择规划周的周一日期",
-        "step_weather": "🌦️ 4. 选择你的城市",
+        "step_weather": "🌦️ 4. 选择国家 / 城市",
+        "weather_country": "选择国家或地区",
+        "weather_city": "选择城市",
+        "weather_hint": "系统会自动根据你选择的城市获取当地天气。城市名称使用英文（例如 Beijing、Hong Kong）。",
         "step_holiday": "🏖️ 5. 节假日（可选）",
         "step4": "🚀 6. 生成闹钟计划",
         "step4_button": "生成智能闹钟计划",
@@ -106,11 +127,6 @@ TEXT = {
         "col_day": "星期",
         "col_start": "开始时间",
         "col_course": "课程",
-
-        "weather_location": "🌦️ 天气位置",
-        "weather_city": "选择你的城市",
-        "weather_city_hint": "系统会自动根据你的选择获取当地天气。",
-        "weather_hint": "选择你所在的城市，系统会自动获取当地天气。",
 
         "holiday_title": "🏖️ 节假日",
         "holiday_label": "输入节假日（一行一个日期）",
@@ -143,7 +159,6 @@ TEXT = {
     },
 
     "en": {
-        "lang_label": "Language / 语言",
         "title": "⏰ Smart Alarm Planner",
         "subtitle": "AI-powered weekly wake-up planner for students",
         "intro": "Upload your timetable and last week's snooze data. The system will calculate your recommended wake-up time for each day.",
@@ -154,7 +169,7 @@ TEXT = {
 
 1. **Upload timetable** — CSV or TXT. Not sure about the format? Click "Download Timetable Template".
 2. **(Optional) Upload snooze data** — Records how many times you snoozed last week. The system will adjust your alarms.
-3. **Pick a date and city, click Generate** — The system calculates your recommended wake-up time and gives you three export formats.
+3. **Pick a date, country/city, click Generate** — The system calculates your recommended wake-up time and gives you three export formats.
 
 **Export formats:**
 - **TXT**: Human-readable report
@@ -191,7 +206,10 @@ TEXT = {
         "step2_missing_col": "The CSV needs a 'snooze_count', 'snooze' or '贪睡次数' column.",
         "step3": "📆 3. Planning Week",
         "step3_date": "Select the Monday of the planning week",
-        "step_weather": "🌦️ 4. Select Your City",
+        "step_weather": "🌦️ 4. Select Country / City",
+        "weather_country": "Select country or region",
+        "weather_city": "Select city",
+        "weather_hint": "The system will fetch the local weather automatically for the selected city.",
         "step_holiday": "🏖️ 5. Holidays (optional)",
         "step4": "🚀 6. Generate Your Alarm Plan",
         "step4_button": "Generate Smart Alarm Plan",
@@ -201,11 +219,6 @@ TEXT = {
         "col_day": "Day",
         "col_start": "Start",
         "col_course": "Course",
-
-        "weather_location": "🌦️ Weather Location",
-        "weather_city": "Select your city",
-        "weather_city_hint": "The system will automatically fetch the local weather for you.",
-        "weather_hint": "Select your city and the system will automatically get the local weather.",
 
         "holiday_title": "🏖️ Holidays",
         "holiday_label": "Enter holidays (one date per line)",
@@ -400,20 +413,51 @@ week_start = st.date_input(
 
 
 # ============================================================
-# 4. 选择城市（生成之前）
+# 4. 选择国家 + 城市
 # ============================================================
 st.header(t["step_weather"])
 
-selected_city = st.selectbox(
-    t["weather_city"],
-    list(CITY_COORDS.keys()),
+col_country, col_city = st.columns(2)
+
+with col_country:
+    # 默认选择香港
+    default_country_idx = next(
+        (i for i, c in enumerate(country_list) if c["code"] == "HK"),
+        0,
+    )
+    country_names = [c["name"] for c in country_list]
+    selected_country_name = st.selectbox(
+        t["weather_country"],
+        country_names,
+        index=default_country_idx,
+    )
+
+selected_country_code = next(
+    c["code"] for c in country_list if c["name"] == selected_country_name
 )
-latitude, longitude = CITY_COORDS[selected_city]
+
+available_cities = country_cities.get(selected_country_code, [])
+
+with col_city:
+    if available_cities:
+        city_indices = list(range(len(available_cities)))
+        selected_city_index = st.selectbox(
+            t["weather_city"],
+            city_indices,
+            format_func=lambda i: available_cities[i]["name"],
+        )
+        selected_city = available_cities[selected_city_index]
+        latitude = selected_city["lat"]
+        longitude = selected_city["lon"]
+    else:
+        st.warning("No city data available.")
+        latitude, longitude = 22.304, 114.179
+
 st.caption(t["weather_hint"])
 
 
 # ============================================================
-# 5. 节假日（生成之前）
+# 5. 节假日
 # ============================================================
 st.header(t["step_holiday"])
 

@@ -1,18 +1,3 @@
-# 常用城市及经纬度（可自行添加更多城市）
-CITY_COORDS = {
-    "香港 Hong Kong": (22.304, 114.179),
-    "北京 Beijing": (39.904, 116.407),
-    "上海 Shanghai": (31.230, 121.474),
-    "广州 Guangzhou": (23.129, 113.264),
-    "深圳 Shenzhen": (22.543, 114.058),
-    "台北 Taipei": (25.033, 121.565),
-    "澳门 Macau": (22.199, 113.544),
-    "新加坡 Singapore": (1.352, 103.820),
-    "东京 Tokyo": (35.689, 139.692),
-    "纽约 New York": (40.713, -74.006),
-    "伦敦 London": (51.507, -0.128),
-    "悉尼 Sydney": (-33.869, 151.209),
-}
 import streamlit as st
 import pandas as pd
 from datetime import date, timedelta
@@ -30,7 +15,26 @@ from smart_alarm_app import (
 
 
 # ============================================================
-# 1. 页面设置
+# 常用城市及经纬度
+# ============================================================
+CITY_COORDS = {
+    "香港 Hong Kong": (22.304, 114.179),
+    "北京 Beijing": (39.904, 116.407),
+    "上海 Shanghai": (31.230, 121.474),
+    "广州 Guangzhou": (23.129, 113.264),
+    "深圳 Shenzhen": (22.543, 114.058),
+    "台北 Taipei": (25.033, 121.565),
+    "澳门 Macau": (22.199, 113.544),
+    "新加坡 Singapore": (1.352, 103.820),
+    "东京 Tokyo": (35.689, 139.692),
+    "纽约 New York": (40.713, -74.006),
+    "伦敦 London": (51.507, -0.128),
+    "悉尼 Sydney": (-33.869, 151.209),
+}
+
+
+# ============================================================
+# 页面设置
 # ============================================================
 st.set_page_config(
     page_title="Smart Alarm Planner",
@@ -40,7 +44,7 @@ st.set_page_config(
 
 
 # ============================================================
-# 2. 多语言文本
+# 多语言文本
 # ============================================================
 TEXT = {
     "zh": {
@@ -103,8 +107,8 @@ TEXT = {
 
         "weather_location": "🌦️ 天气位置",
         "weather_city": "选择你的城市",
-        "weather_city_hint": "系统会自动根据你的选择获取当地天气",
-        "weather_hint": "选择你所在的城市，系统会自动获取当地天气",
+        "weather_city_hint": "系统会自动根据你的选择获取当地天气。",
+        "weather_hint": "选择你所在的城市，系统会自动获取当地天气。",
 
         "holiday_title": "🏖️ 节假日",
         "holiday_label": "输入节假日（一行一个日期）",
@@ -130,7 +134,7 @@ TEXT = {
         "export_title": "📥 导出你的每周计划",
         "download_txt": "下载 TXT",
         "download_json": "下载 JSON",
-        "download_ics": "下载日历文件 (.ics)",
+        "download_calendar": "下载日历文件 (.ics)",
         "download_note": "TXT 是人类可读报告；JSON 是结构化数据；ICS 可以导入手机日历。",
 
         "footer": "智能闹钟规划器 — 为学生设计的动态起床时间规划工具",
@@ -196,8 +200,8 @@ TEXT = {
 
         "weather_location": "🌦️ Weather Location",
         "weather_city": "Select your city",
-        "weather_city_hint": "The system will automatically fetch the local weather for you",
-        "weather_hint": "Select the city and the system will automatically get the local weather.",
+        "weather_city_hint": "The system will automatically fetch the local weather for you.",
+        "weather_hint": "Select your city and the system will automatically get the local weather.",
 
         "holiday_title": "🏖️ Holidays",
         "holiday_label": "Enter holidays (one date per line)",
@@ -224,7 +228,6 @@ TEXT = {
         "download_txt": "Download TXT",
         "download_json": "Download JSON",
         "download_calendar": "Download Calendar (.ics)",
-        "download_ics": "Download Calendar (.ics)",
         "download_note": "TXT is a human-readable report; JSON is structured data; ICS can be imported into your phone calendar.",
 
         "footer": "Smart Alarm Planner — Dynamic wake-up planning for students",
@@ -233,7 +236,7 @@ TEXT = {
 
 
 # ============================================================
-# 3. 侧边栏：语言 + 预设 + 设置
+# 侧边栏：语言 + 预设 + 设置
 # ============================================================
 lang_label = st.sidebar.radio(
     "Language / 语言",
@@ -292,7 +295,7 @@ st.sidebar.write(t["prep_hint"])
 
 
 # ============================================================
-# 4. 页面标题
+# 页面标题
 # ============================================================
 st.title(t["title"])
 st.write(t["subtitle"])
@@ -304,7 +307,7 @@ with st.expander(t["help_title"], expanded=False):
 
 
 # ============================================================
-# 5. 上传课表 + 模板下载
+# 上传课表 + 模板下载
 # ============================================================
 st.header(t["step1"])
 
@@ -330,7 +333,7 @@ st.download_button(
 
 
 # ============================================================
-# 6. 上传贪睡数据 + 模板下载
+# 上传贪睡数据 + 模板下载
 # ============================================================
 st.header(t["step2"])
 
@@ -376,7 +379,7 @@ else:
 
 
 # ============================================================
-# 7. 规划日期
+# 规划日期
 # ============================================================
 st.header(t["step3"])
 
@@ -393,7 +396,7 @@ week_start = st.date_input(
 
 
 # ============================================================
-# 8. 生成按钮
+# 生成按钮
 # ============================================================
 st.header(t["step4"])
 
@@ -405,7 +408,7 @@ generate = st.button(
 
 
 # ============================================================
-# 9. 生成逻辑
+# 生成逻辑
 # ============================================================
 if generate:
 
@@ -438,13 +441,13 @@ if generate:
     ]
     st.dataframe(pd.DataFrame(schedule_table), use_container_width=True)
 
-    # ---------- 天气位置 ----------
+    # ---------- 天气位置（城市选择） ----------
     st.subheader(t["weather_location"])
-    col1, col2 = st.columns(2)
-    with col1:
-        latitude = st.number_input(t["latitude"], value=22.304, format="%.4f")
-    with col2:
-        longitude = st.number_input(t["longitude"], value=114.179, format="%.4f")
+    selected_city = st.selectbox(
+        t["weather_city"],
+        list(CITY_COORDS.keys()),
+    )
+    latitude, longitude = CITY_COORDS[selected_city]
     st.caption(t["weather_hint"])
 
     # ---------- 节假日 ----------
@@ -476,7 +479,7 @@ if generate:
     )
 
     # ========================================================
-    # 10. 结果：卡片显示
+    # 结果：卡片显示
     # ========================================================
     st.success(t["success_msg"])
     st.subheader(t["plan_title"])
@@ -514,7 +517,7 @@ if generate:
                     st.metric(t["final_alarm"], "—")
 
     # ========================================================
-    # 11. 每日明细
+    # 每日明细
     # ========================================================
     st.subheader(t["details_title"])
 
@@ -547,7 +550,7 @@ if generate:
             st.write(f"**{plan.date}** — {plan.warning}")
 
     # ========================================================
-    # 12. 导出文件
+    # 导出文件
     # ========================================================
     output_dir = Path("streamlit_output")
     output_dir.mkdir(exist_ok=True)
@@ -579,7 +582,7 @@ if generate:
         )
     with col3:
         st.download_button(
-            t["download_ics"],
+            t["download_calendar"],
             data=ics_file.read_text(encoding="utf-8"),
             file_name="weekly_alarms.ics",
             mime="text/calendar",

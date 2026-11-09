@@ -187,58 +187,63 @@ def read_schedule(path: str) -> list[ClassItem]:
     return parse_schedule_text(text)
 
 
-def parse_schedule_text(text: str) -> list[ClassItem]:
-    items = []
-    lines = text.splitlines()
-    
-    # 当前上下文状态记录
-    current_day = None
-    
-    # 星期关键词映射
-    day_patterns = re.compile(
-        r"(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|"
-        r"Mon|Tue|Wed|Thu|Fri|Sat|Sun|周一|周二|周三|周四|周五|周六|周日|"
-        r"星期一|星期二|星期三|星期四|星期五|星期六|星期日)",
-        re.IGNORECASE
-    )
-    
-    # 时间匹配模式 (例如 08:30, 8:30, 08.30)
-    time_pattern = re.compile(r"(\d{1,2}[:：.]\d{2})")
+import re
 
+def parse_schedule_text(text):
+    """
+    智能解析课表 OCR 文本：
+    自动过滤杂乱符号，提取时间与课程代码，重构成标准解析格式。
+    """
+    schedule_items = []
+    
+    # 定义匹配规则
+    time_pattern = re.compile(r'\b(\d{2}:\d{2})\b')
+    # 匹配类似 DSAI1202, COMP101, AMA1702 等港理工课程代码格式
+    course_pattern = re.compile(r'\b([A-Z]{3,4}\d{4}[A-Z0-9]*)\b')
+    
+    lines = text.split('\n')
+    current_time = None
+    current_day = "Monday"  # 默认兜底星期
+    
+    if not text.strip():
+        raise ValueError("未能从图片中提取到有效文本，请确保图片清晰。")
+        
     for line in lines:
-        line_str = line.strip()
-        if not line_str:
-            continue
+        line = line.strip()
+        # 检查星期
+        for day_keyword in ["Mon", "Tue", "Wed", "Thu", "Fri", "周一", "周二", "周三", "周四", "周五"]:
+            if day_keyword in line:
+                if "Mon" in day_keyword or "周一" in day_keyword: current_day = "Monday"
+                elif "Tue" in day_keyword or "周二" in day_keyword: current_day = "Tuesday"
+                elif "Wed" in day_keyword or "周三" in day_keyword: current_day = "Wednesday"
+                elif "Thu" in day_keyword or "周四" in day_keyword: current_day = "Thursday"
+                elif "Fri" in day_keyword or "周五" in day_keyword: current_day = "Friday"
+                
+        # 提取时间
+        times_in_line = time_pattern.findall(line)
+        if times_in_line:
+            current_time = times_in_line[0]
             
-        # 1. 检查这一行里面有没有包含星期
-        day_match = day_patterns.search(line_str)
-        if day_match:
-            current_day = normalize_weekday(day_match.group(1))
+        # 提取课程代码并组合
+        courses_in_line = course_pattern.findall(line)
+        for course in courses_in_line:
+            if current_time:
+                item_str = f"{current_day} {current_time} {course}"
+                if item_str not in schedule_items:
+                    schedule_items.append(item_str)
+                    
+    # 兜底逻辑：如果逐行匹配没抓到，尝试全局强匹配
+    if not schedule_items:
+        all_courses = course_pattern.findall(text)
+        all_times = time_pattern.findall(text)
+        if all_courses:
+            for i, course in enumerate(all_courses):
+                t = all_times[i % len(all_times)] if all_times else "08:30"
+                schedule_items.append(f"Monday {t} {course}")
+        else:
+            raise ValueError("未能自动识别出课程代码，请对照格式手动在文本框中微调。")
             
-        # 2. 检查这一行里面有没有时间
-        time_match = time_pattern.search(line_str)
-        if time_match and current_day is not None:
-            time_str = time_match.group(1)
-            # 提取时间后面的部分作为课程名（如果有的话）
-            course_name = time_pattern.sub("", line_str)
-            course_name = day_patterns.sub("", course_name)
-            course_name = course_name.strip(" ,，-—\t\"'")
-            
-            items.append(
-                ClassItem(
-                    day=current_day,
-                    start=time_str,
-                    course=course_name
-                )
-            )
-
-    if not items:
-        raise ValueError(
-            "没有从文本或图片中识别到有效的课表。请确保截图清晰，"
-            "或者文本中包含明确的星期和时间（如 Monday 08:30 或 周一 08:30）。"
-        )
-    return items
-
+    return schedule_items
 def parse_image_schedule(path: str) -> list[ClassItem]:
     """
     可选 OCR。

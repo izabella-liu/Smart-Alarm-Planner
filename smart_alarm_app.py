@@ -187,53 +187,83 @@ def read_schedule(path: str) -> list[ClassItem]:
     return parse_schedule_text(text)
 
 
-import re
+def parse_schedule_text(text: str) -> list[ClassItem]:
+    items = []
+    lines = text.splitlines()
+    
+    # 当前上下文状态记录
+    current_day = None
+    
+    # 星期关键词映射
+    day_patterns = re.compile(
+        r"(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|"
+        r"Mon|Tue|Wed|Thu|Fri|Sat|Sun|周一|周二|周三|周四|周五|周六|周日|"
+        r"星期一|星期二|星期三|星期四|星期五|星期六|星期日)",
+        re.IGNORECASE
+    )
+    
+    # 时间匹配模式 (例如 08:30, 8:30, 08.30)
+    time_pattern = re.compile(r"(\d{1,2}[:：.]\d{2})")
 
-def parse_schedule_text(text):
-    """
-    智能图像识别拦截器：直接将 OCR 的散乱文本映射为标准的 ClassItem 列表
-    """
-    schedule_items = []
-    
-    # 你的这学期固定课表数据库
-    semester_schedule = [
-        {"day": "Monday", "start": "08:30", "course": "DSAI1202"},
-        {"day": "Monday", "start": "16:30", "course": "COMP101"},
-        {"day": "Tuesday", "start": "08:30", "course": "LEI1101"},
-        {"day": "Wednesday", "start": "08:30", "course": "AMA1702"},
-        {"day": "Wednesday", "start": "11:30", "course": "DSAI1202"},
-        {"day": "Wednesday", "start": "15:30", "course": "AMA1702"},
-        {"day": "Thursday", "start": "08:30", "course": "APSS1L01"},
-        {"day": "Friday", "start": "10:30", "course": "COMP101"}
-    ]
-    
-    text_upper = text.upper()
-    
-    # 只要图片识别出的文本里包含对应课程代码，就强制生成标准课表项
-    for item_info in semester_schedule:
-        if item_info["course"] in text_upper:
-            if 'ClassItem' in globals():
-                item = ClassItem(
-                    day=item_info["day"],
-                    start=item_info["start"],
-                    course=item_info["course"]
+    for line in lines:
+        line_str = line.strip()
+        if not line_str:
+            continue
+            
+        # 1. 检查这一行里面有没有包含星期
+        day_match = day_patterns.search(line_str)
+        if day_match:
+            current_day = normalize_weekday(day_match.group(1))
+            
+        # 2. 检查这一行里面有没有时间
+        time_match = time_pattern.search(line_str)
+        if time_match and current_day is not None:
+            time_str = time_match.group(1)
+            # 提取时间后面的部分作为课程名（如果有的话）
+            course_name = time_pattern.sub("", line_str)
+            course_name = day_patterns.sub("", course_name)
+            course_name = course_name.strip(" ,，-—\t\"'")
+            
+            items.append(
+                ClassItem(
+                    day=current_day,
+                    start=time_str,
+                    course=course_name
                 )
-                if item not in schedule_items:
-                    schedule_items.append(item)
-            else:
-                item_dict = {
-                    "day": item_info["day"],
-                    "start": item_info["start"],
-                    "course": item_info["course"]
-                }
-                if item_dict not in schedule_items:
-                    schedule_items.append(item_dict)
-                    
-    # 如果没扫到任何课程，返回一个基础默认项防止报错，同时提示
-    if not schedule_items:
-        raise ValueError("未能从截图中识别出课程代码，请确保上传的是正确的课表截图。")
-        
-    return schedule_items
+            )
+
+    if not items:
+        raise ValueError(
+            "没有从文本或图片中识别到有效的课表。请确保截图清晰，"
+            "或者文本中包含明确的星期和时间（如 Monday 08:30 或 周一 08:30）。"
+        )
+    return items
+
+def parse_image_schedule(path: str) -> list[ClassItem]:
+    """
+    可选 OCR。
+    需要：
+        pip install pillow pytesseract
+
+    同时需要系统安装 Tesseract OCR。
+    """
+    try:
+        from PIL import Image
+        import pytesseract
+    except ImportError:
+        raise RuntimeError(
+            "图片课表需要额外安装：pip install pillow pytesseract"
+        )
+
+    text = pytesseract.image_to_string(Image.open(path))
+    if not text.strip():
+        raise RuntimeError("OCR 没有识别出文字，请使用 CSV/TXT 或提高截图清晰度。")
+    print("\n[OCR 识别结果]")
+    print(text)
+    print("[/OCR 识别结果]\n")
+    return parse_schedule_text(text)
+
+
 def read_snooze(path: Optional[str]) -> float:
     """
     snooze.csv 推荐：

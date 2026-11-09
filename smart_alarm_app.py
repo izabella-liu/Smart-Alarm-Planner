@@ -191,82 +191,54 @@ import re
 
 def parse_schedule_text(text):
     """
-    智能解析课表 OCR 文本：
-    自动过滤杂乱符号，提取时间与课程代码，重构成标准解析格式。
+    智能解析课表 OCR 文本，并返回下游计算所需的 ClassItem 对象列表
     """
     schedule_items = []
     
     # 定义匹配规则
     time_pattern = re.compile(r'\b(\d{2}:\d{2})\b')
-    # 匹配类似 DSAI1202, COMP101, AMA1702 等港理工课程代码格式
     course_pattern = re.compile(r'\b([A-Z]{3,4}\d{4}[A-Z0-9]*)\b')
     
     lines = text.split('\n')
-    current_time = None
-    current_day = "Monday"  # 默认兜底星期
+    current_time = "08:30"
+    current_day = "Monday"
     
     if not text.strip():
-        raise ValueError("未能从图片中提取到有效文本，请确保图片清晰。")
+        raise ValueError("未能从文本中提取到有效内容。")
         
     for line in lines:
         line = line.strip()
-        # 检查星期
+        # 识别星期
         for day_keyword in ["Mon", "Tue", "Wed", "Thu", "Fri", "周一", "周二", "周三", "周四", "周五"]:
             if day_keyword in line:
                 if "Mon" in day_keyword or "周一" in day_keyword: current_day = "Monday"
                 elif "Tue" in day_keyword or "周二" in day_keyword: current_day = "Tuesday"
                 elif "Wed" in day_keyword or "周三" in day_keyword: current_day = "Wednesday"
-                elif "Thu" in day_keyword or "周四" in day_keyword: current_day = "Thursday"
+                elif "Thu" in day_keyword or "周二" in day_keyword: current_day = "Thursday"
                 elif "Fri" in day_keyword or "周五" in day_keyword: current_day = "Friday"
                 
         # 提取时间
-        times_in_line = time_pattern.findall(line)
-        if times_in_line:
-            current_time = times_in_line[0]
+        times = time_pattern.findall(line)
+        if times:
+            current_time = times[0]
             
-        # 提取课程代码并组合
-        courses_in_line = course_pattern.findall(line)
-        for course in courses_in_line:
-            if current_time:
-                item_str = f"{current_day} {current_time} {course}"
-                if item_str not in schedule_items:
-                    schedule_items.append(item_str)
-                    
-    # 兜底逻辑：如果逐行匹配没抓到，尝试全局强匹配
+        # 提取课程并构造 ClassItem 对象（适配下游属性访问）
+        courses = course_pattern.findall(line)
+        for course in courses:
+            # 检查是否有定义 ClassItem 类，直接实例化
+            if 'ClassItem' in globals():
+                item = ClassItem(day=current_day, start=current_time, course=course)
+                if item not in schedule_items:
+                    schedule_items.append(item)
+            else:
+                # 兜底字典结构
+                schedule_items.append({"day": current_day, "start": current_time, "course": course})
+                
     if not schedule_items:
-        all_courses = course_pattern.findall(text)
-        all_times = time_pattern.findall(text)
-        if all_courses:
-            for i, course in enumerate(all_courses):
-                t = all_times[i % len(all_times)] if all_times else "08:30"
-                schedule_items.append(f"Monday {t} {course}")
-        else:
-            raise ValueError("未能自动识别出课程代码，请对照格式手动在文本框中微调。")
-            
+        raise ValueError("未能自动识别出课表结构，请在上方文本框中适当微调格式。")
+        
     return schedule_items
-def parse_image_schedule(path: str) -> list[ClassItem]:
-    """
-    可选 OCR。
-    需要：
-        pip install pillow pytesseract
 
-    同时需要系统安装 Tesseract OCR。
-    """
-    try:
-        from PIL import Image
-        import pytesseract
-    except ImportError:
-        raise RuntimeError(
-            "图片课表需要额外安装：pip install pillow pytesseract"
-        )
-
-    text = pytesseract.image_to_string(Image.open(path))
-    if not text.strip():
-        raise RuntimeError("OCR 没有识别出文字，请使用 CSV/TXT 或提高截图清晰度。")
-    print("\n[OCR 识别结果]")
-    print(text)
-    print("[/OCR 识别结果]\n")
-    return parse_schedule_text(text)
 
 
 def read_snooze(path: Optional[str]) -> float:

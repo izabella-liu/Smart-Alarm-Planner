@@ -189,40 +189,55 @@ def read_schedule(path: str) -> list[ClassItem]:
 
 def parse_schedule_text(text: str) -> list[ClassItem]:
     items = []
-
-    # 匹配：
-    # Monday 08:30 Programming
-    # 周一 08:30 编程
-    pattern = re.compile(
+    lines = text.splitlines()
+    
+    # 当前上下文状态记录
+    current_day = None
+    
+    # 星期关键词映射
+    day_patterns = re.compile(
         r"(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|"
         r"Mon|Tue|Wed|Thu|Fri|Sat|Sun|周一|周二|周三|周四|周五|周六|周日|"
-        r"星期一|星期二|星期三|星期四|星期五|星期六|星期日)"
-        r"\s+(\d{1,2}[:：.]\d{2})\s*(.*)",
+        r"星期一|星期二|星期三|星期四|星期五|星期六|星期日)",
         re.IGNORECASE
     )
+    
+    # 时间匹配模式 (例如 08:30, 8:30, 08.30)
+    time_pattern = re.compile(r"(\d{1,2}[:：.]\d{2})")
 
-    for line in text.splitlines():
-        line = line.strip()
-        if not line:
+    for line in lines:
+        line_str = line.strip()
+        if not line_str:
             continue
-        m = pattern.search(line)
-        if m:
+            
+        # 1. 检查这一行里面有没有包含星期
+        day_match = day_patterns.search(line_str)
+        if day_match:
+            current_day = normalize_weekday(day_match.group(1))
+            
+        # 2. 检查这一行里面有没有时间
+        time_match = time_pattern.search(line_str)
+        if time_match and current_day is not None:
+            time_str = time_match.group(1)
+            # 提取时间后面的部分作为课程名（如果有的话）
+            course_name = time_pattern.sub("", line_str)
+            course_name = day_patterns.sub("", course_name)
+            course_name = course_name.strip(" ,，-—\t\"'")
+            
             items.append(
                 ClassItem(
-                    day=normalize_weekday(m.group(1)),
-                    start=m.group(2),
-                    course=m.group(3).strip(" ,，-\t")
+                    day=current_day,
+                    start=time_str,
+                    course=course_name
                 )
             )
 
     if not items:
         raise ValueError(
-            "没有从文本中识别到课表。请使用类似：\n"
-            "Monday 08:30 Programming\n"
-            "Tuesday 10:00 Mathematics"
+            "没有从文本或图片中识别到有效的课表。请确保截图清晰，"
+            "或者文本中包含明确的星期和时间（如 Monday 08:30 或 周一 08:30）。"
         )
     return items
-
 
 def parse_image_schedule(path: str) -> list[ClassItem]:
     """

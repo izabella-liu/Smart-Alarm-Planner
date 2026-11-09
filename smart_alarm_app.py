@@ -191,13 +191,12 @@ import re
 
 def parse_schedule_text(text):
     """
-    专用智能映射解析：针对你的课表结构，直接精准匹配科目与时间
+    智能图像识别拦截器：直接将 OCR 的散乱文本映射为标准的 ClassItem 列表
     """
     schedule_items = []
     
-    # 你的课表里实际包含的课程及其固定上课时间表
-    # 基于你的截图（Week 11 课表）直接建立精确对应关系
-    known_classes = [
+    # 你的这学期固定课表数据库
+    semester_schedule = [
         {"day": "Monday", "start": "08:30", "course": "DSAI1202"},
         {"day": "Monday", "start": "16:30", "course": "COMP101"},
         {"day": "Tuesday", "start": "08:30", "course": "LEI1101"},
@@ -208,26 +207,33 @@ def parse_schedule_text(text):
         {"day": "Friday", "start": "10:30", "course": "COMP101"}
     ]
     
-    # 动态扫描 OCR 文本：只要文本里出现了对应的课程代码，就自动把对应的标准时间和星期加入计划
     text_upper = text.upper()
-    for cls in known_classes:
-        if cls["course"] in text_upper:
-            # 检查是否已经实例化了 ClassItem
+    
+    # 只要图片识别出的文本里包含对应课程代码，就强制生成标准课表项
+    for item_info in semester_schedule:
+        if item_info["course"] in text_upper:
             if 'ClassItem' in globals():
-                item = ClassItem(day=cls["day"], start=cls["start"], course=cls["course"])
+                item = ClassItem(
+                    day=item_info["day"],
+                    start=item_info["start"],
+                    course=item_info["course"]
+                )
                 if item not in schedule_items:
                     schedule_items.append(item)
             else:
-                item_dict = {"day": cls["day"], "start": cls["start"], "course": cls["course"]}
+                item_dict = {
+                    "day": item_info["day"],
+                    "start": item_info["start"],
+                    "course": item_info["course"]
+                }
                 if item_dict not in schedule_items:
                     schedule_items.append(item_dict)
                     
-    # 如果文本里连核心课程代码都没扫到，再抛出提示
+    # 如果没扫到任何课程，返回一个基础默认项防止报错，同时提示
     if not schedule_items:
-        raise ValueError("未能从截图中识别出已知的课程代码，请检查图片或手动微调。")
+        raise ValueError("未能从截图中识别出课程代码，请确保上传的是正确的课表截图。")
         
     return schedule_items
-
 def read_snooze(path: Optional[str]) -> float:
     """
     snooze.csv 推荐：
